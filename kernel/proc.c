@@ -427,6 +427,11 @@ wait(uint64 addr)
   }
 }
 
+int timeToResume = 0;
+int systemIsPaused() {
+  return ticks > timeToResume;
+}
+
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -447,7 +452,7 @@ scheduler(void)
 
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
-      if(p->state == RUNNABLE) {
+      if(p->state == RUNNABLE && (p->pid == 1 || p->pid == 2 || !systemIsPaused())) {
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
@@ -653,4 +658,40 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+int kill_system(void) {
+  struct proc *p;
+
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    // TODO: Correct pids?
+    if (p->pid != 1 || p->pid != 2) {
+      p->killed = 1;
+      if(p->state == SLEEPING){
+        p->state = RUNNABLE;
+      }
+    }
+    release(&p->lock);
+  }
+  return 0; //TODO: 0 or -1
+}
+
+int pause_system(int seconds) {
+  struct proc *p;
+  int ticksToStop = seconds * 10;
+  acquire(&tickslock);
+  timeToResume = ticks + ticksToStop;
+  release(&tickslock);
+
+  for(p = proc; p < &proc[NPROC]; p++){
+    acquire(&p->lock);
+    if(p->state == RUNNING && !(p->pid != 1 || p->pid != 2)){
+      p->state = RUNNABLE;
+    }
+    release(&p->lock);
+  }
+  yield();
+
+  return 0;
 }
