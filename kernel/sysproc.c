@@ -95,11 +95,3 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
-
-uint64 sys_pause_system(void) {
-  int seconds;
-  if(argint(0, &seconds) <= -1)
-    return -1;
-
-  return pause_system(seconds);
-}
