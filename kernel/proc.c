@@ -427,9 +427,9 @@ wait(uint64 addr)
   }
 }
 
-int timeToResume = 0;
+uint timeToResume = 0;
 int systemIsPaused() {
-  return ticks > timeToResume;
+  return ticks <= timeToResume;
 }
 
 // Per-CPU process scheduler.
@@ -666,7 +666,7 @@ int kill_system(void) {
   for(p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
     // TODO: Correct pids?
-    if (p->pid != 1 || p->pid != 2) {
+    if (p->pid != 1 && p->pid != 2) {
       p->killed = 1;
       if(p->state == SLEEPING){
         p->state = RUNNABLE;
@@ -679,14 +679,14 @@ int kill_system(void) {
 
 int pause_system(int seconds) {
   struct proc *p;
-  int ticksToStop = seconds * 10;
+  uint ticksToStop = seconds * 10;
   acquire(&tickslock);
   timeToResume = ticks + ticksToStop;
   release(&tickslock);
 
   for(p = proc; p < &proc[NPROC]; p++){
     acquire(&p->lock);
-    if(p->state == RUNNING && !(p->pid != 1 || p->pid != 2)){
+    if(p->state == RUNNING && !(p->pid == 1 || p->pid == 2)){
       p->state = RUNNABLE;
     }
     release(&p->lock);
