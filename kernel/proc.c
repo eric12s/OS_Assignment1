@@ -428,8 +428,10 @@ wait(uint64 addr)
 }
 
 uint timeToResume = 0;
+int isSystemPaused = 0;
+
 int systemIsPaused() {
-  return ticks <= timeToResume;
+  return isSystemPaused == 1 && ticks <= timeToResume;
 }
 
 // Per-CPU process scheduler.
@@ -463,6 +465,8 @@ scheduler(void)
         // Process is done running for now.
         // It should have changed its p->state before coming back.
         c->proc = 0;
+      } else if (isSystemPaused && ticks > timeToResume) {
+        isSystemPaused = 0;
       }
       release(&p->lock);
     }
@@ -680,6 +684,7 @@ int kill_system(void) {
 int pause_system(int seconds) {
   struct proc *p;
   uint ticksToStop = seconds * 10;
+  isSystemPaused = 1;
   acquire(&tickslock);
   timeToResume = ticks + ticksToStop;
   release(&tickslock);
