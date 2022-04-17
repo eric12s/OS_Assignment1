@@ -522,7 +522,7 @@ void sjf(void) // TODO: how to stop clock interrupt
   {
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
-    struct proc *procToChoose;
+    struct proc *procToChoose = proc;
     int minMeanTicks = -99;
     for (p = proc; p < &proc[NPROC]; p++)
     {

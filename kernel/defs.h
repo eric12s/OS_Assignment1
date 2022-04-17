@@ -108,7 +108,7 @@ int kill_system(void);
 int pause_system(int);
 void roundRobin(void) __attribute__((noreturn));
 void fcfs(void) __attribute__((noreturn));
-void sjf(void) __attribute__((noreturn));
+void sjf(void);
 
 // swtch.S
 void swtch(struct context *, struct context *);
