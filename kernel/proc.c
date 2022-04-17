@@ -129,6 +129,7 @@ found:
   p->state = USED;
   p->last_ticks = 0;
   p->mean_ticks = 0;
+  p->last_runnable_time = ticks;
 
   // Allocate a trapframe page.
   if ((p->trapframe = (struct trapframe *)kalloc()) == 0)
@@ -496,6 +497,7 @@ void roundRobin(void)
         // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
+        p->start_scheduling_ticks = ticks;
         swtch(&c->context, &p->context);
 
         // Process is done running for now.
@@ -523,16 +525,16 @@ void sjf(void) // TODO: how to stop clock interrupt
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
     struct proc *procToChoose = proc;
-    int minMeanTicks = -99;
+    int minTicks = -99;
     for (p = proc; p < &proc[NPROC]; p++)
     {
       acquire(&p->lock);
       if (p->state == RUNNABLE && (p->pid == 1 || p->pid == 2 || !systemIsPaused()))
       {
-        if (minMeanTicks == -99 || p->mean_ticks < minMeanTicks)
+        if (minTicks == -99 || p->mean_ticks < minTicks)
         {
           procToChoose = p;
-          minMeanTicks = p->mean_ticks;
+          minTicks = p->mean_ticks;
         }
       }
       else if (isSystemPaused && ticks > timeToResume)
@@ -542,19 +544,69 @@ void sjf(void) // TODO: how to stop clock interrupt
       release(&p->lock);
     }
 
-    if (minMeanTicks == -99) // TODO: Check if needed
+    if (minTicks == -99) // TODO: Check if needed
       continue;
 
     /*runs the process with min mean ticks*/
     acquire(&procToChoose->lock);
-    if (p->state != RUNNABLE) // in SJF and FCFS the process can change state while we check which one is minimal
-      return;
+    if (procToChoose->state == RUNNABLE)
+    {
+      procToChoose->state = RUNNING;
+      c->proc = procToChoose;
+      // procToChoose->runnable_time += (ticks - p->start_session_ticks);
+      procToChoose->start_scheduling_ticks = ticks;
+      swtch(&c->context, &procToChoose->context);
+    }
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
+    release(&procToChoose->lock);
+  }
+}
 
-    p->state = RUNNING;
-    c->proc = p;
-    // p->runnable_time += (ticks - p->start_session_ticks);
-    // p->start_session_ticks = ticks;
-    swtch(&c->context, &p->context);
+void fcfs(void) // TODO: how to stop clock interrupt
+{
+  printf("FCFS Policy \n");
+  struct proc *p;
+  struct cpu *c = mycpu();
+  c->proc = 0;
+  for (;;)
+  {
+    // Avoid deadlock by ensuring that devices can interrupt.
+    intr_on();
+    struct proc *procToChoose = proc;
+    int minTicks = -99;
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
+      acquire(&p->lock);
+      if (p->state == RUNNABLE && (p->pid == 1 || p->pid == 2 || !systemIsPaused()))
+      {
+        if (minTicks == -99 || p->last_runnable_time < minTicks)
+        {
+          procToChoose = p;
+          minTicks = p->last_runnable_time;
+        }
+      }
+      else if (isSystemPaused && ticks > timeToResume)
+      {
+        isSystemPaused = 0;
+      }
+      release(&p->lock);
+    }
+
+    if (minTicks == -99)
+      continue;
+
+    /*runs the process with min mean ticks*/
+    acquire(&procToChoose->lock);
+    if (procToChoose->state == RUNNABLE)
+    {
+      procToChoose->state = RUNNING;
+      c->proc = procToChoose;
+      // procToChoose->runnable_time += (ticks - p->start_scheduling_ticks);
+      procToChoose->start_scheduling_ticks = ticks;
+      swtch(&c->context, &procToChoose->context);
+    }
     // Process is done running for now.
     // It should have changed its p->state before coming back.
     c->proc = 0;
@@ -593,9 +645,11 @@ void yield(void)
 {
   struct proc *p = myproc();
   acquire(&p->lock);
-  p->last_ticks = ticks - p->start_ticks;
-  p->mean_ticks = ((10 - rate) * p->mean_ticks + p->last_ticks * (rate)) / 10;
   p->state = RUNNABLE;
+  p->last_runnable_time = ticks;
+  p->last_ticks = ticks - p->start_scheduling_ticks;
+  p->mean_ticks = ((10 - rate) * p->mean_ticks + p->last_ticks * (rate)) / 10;
+  p->start_scheduling_ticks = ticks;
   sched();
   release(&p->lock);
 }
@@ -640,7 +694,9 @@ void sleep(void *chan, struct spinlock *lk)
   // Go to sleep.
   p->chan = chan;
   p->state = SLEEPING;
-
+  p->last_ticks = ticks - p->start_scheduling_ticks;
+  p->mean_ticks = ((10 - rate) * p->mean_ticks + p->last_ticks * (rate)) / 10;
+  p->start_scheduling_ticks = ticks;
   sched();
 
   // Tidy up.
@@ -665,6 +721,7 @@ void wakeup(void *chan)
       if (p->state == SLEEPING && p->chan == chan)
       {
         p->state = RUNNABLE;
+        p->start_scheduling_ticks = ticks;
       }
       release(&p->lock);
     }
