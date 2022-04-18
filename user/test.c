@@ -4,11 +4,11 @@
 
 void example_pause_system(int interval, int pause_seconds, int loop_size)
 {
-  int n_forks = 2;
-  for (int i = 0; i < n_forks; i++)
-  {
-    fork();
-  }
+//   int n_forks = 2;
+//   for (int i = 0; i < n_forks; i++)
+//   {
+//     fork();
+//   }
 
   for (int i = 0; i < loop_size; i++)
   {
@@ -48,7 +48,7 @@ void example_kill_system(int interval, int loop_size)
 int main(int argc, char *argv[])
 {
   printf("going to pause everyone\n");
-  example_pause_system(1, 10, 10);
+  example_pause_system(10, 10, 1000);
   print_stats();
   example_kill_system(1, 10);
   exit(0);

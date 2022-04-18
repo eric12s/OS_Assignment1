@@ -131,8 +131,6 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
-  p->last_runnable_time = ticks;
-  p->start_scheduling_ticks = ticks;
   p->last_ticks = 0;
   p->mean_ticks = 0;
   p->runnable_time = 0;
@@ -263,6 +261,7 @@ void userinit(void)
   p->cwd = namei("/");
 
   p->last_runnable_time = ticks;
+  p->start_scheduling_ticks = ticks;
   p->state = RUNNABLE;
 
   release(&p->lock);
@@ -338,6 +337,7 @@ int fork(void)
 
   acquire(&np->lock);
   np->start_scheduling_ticks = ticks;
+  np->last_runnable_time = ticks;
   np->state = RUNNABLE;
   release(&np->lock);
 
@@ -362,9 +362,9 @@ void reparent(struct proc *p)
 
 void updateMeanValues(uint64 runnable_time, uint64 running_time, uint64 sleeping_time)
 {
-  runnable_processes_mean = ((runnable_processes_mean * number_of_processes) + runnable_time) / (number_of_processes + 1);
-  running_processes_mean = ((running_processes_mean * number_of_processes) + running_time) / (number_of_processes + 1);
-  sleeping_processes_mean = ((sleeping_processes_mean * number_of_processes) + sleeping_time) / (number_of_processes + 1);
+  runnable_processes_mean = ((runnable_processes_mean * number_of_processes) + runnable_time);
+  running_processes_mean = ((running_processes_mean * number_of_processes) + running_time);
+  sleeping_processes_mean = ((sleeping_processes_mean * number_of_processes) + sleeping_time);
 }
 
 // Exit the current process.  Does not return.
@@ -889,7 +889,8 @@ void print_stats(void)
 {
   printf("Program time: %d\n", program_time);
   printf("Running time: %d\n", running_processes_mean);
-  printf("Runnable time: %d\n", runnable_processes_mean);
-  printf("Mean sleeping time: %d\n", sleeping_processes_mean);
+  printf("Running time: %d\n", running_processes_mean / (number_of_processes + 1));
+  printf("Runnable time: %d\n", runnable_processes_mean / (number_of_processes + 1));
+  printf("Mean sleeping time: %d\n", sleeping_processes_mean / (number_of_processes + 1));
   printf("CPU utilization: %d\n", cpu_utilization);
 }
