@@ -122,4 +122,8 @@ struct proc
   uint64 start_scheduling_ticks;
   uint64 last_ticks;
   uint64 last_runnable_time;
+
+  uint64 sleeping_time;
+  uint64 runnable_time;
+  uint64 running_time;
 };

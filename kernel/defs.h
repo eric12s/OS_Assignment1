@@ -109,6 +109,7 @@ int pause_system(int);
 void roundRobin(void) __attribute__((noreturn));
 void fcfs(void) __attribute__((noreturn));
 void sjf(void);
+void updateMeanValues(void);
 
 // swtch.S
 void swtch(struct context *, struct context *);

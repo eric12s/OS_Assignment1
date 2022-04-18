@@ -22,6 +22,9 @@ extern char trampoline[]; // trampoline.S
 
 int rate = 5;
 
+int start_time;
+int sleeping_processes_mean, running_processes_mean, runnable_processes_mean, number_of_processes, program_time, cpu_utilization = 0;
+
 // helps ensure that wakeups of wait()ing
 // parents are not lost. helps obey the
 // memory model when using p->parent.
@@ -43,6 +46,7 @@ void proc_mapstacks(pagetable_t kpgtbl)
     uint64 va = KSTACK((int)(p - proc));
     kvmmap(kpgtbl, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
   }
+  start_time = ticks;
 }
 
 // initialize the proc table at boot time.
@@ -127,9 +131,13 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->last_runnable_time = ticks;
+  p->start_scheduling_ticks = ticks;
   p->last_ticks = 0;
   p->mean_ticks = 0;
-  p->last_runnable_time = ticks;
+  p->runnable_time = 0;
+  p->running_time = 0;
+  p->sleeping_time = 0;
 
   // Allocate a trapframe page.
   if ((p->trapframe = (struct trapframe *)kalloc()) == 0)
@@ -254,6 +262,7 @@ void userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
+  p->last_runnable_time = ticks;
   p->state = RUNNABLE;
 
   release(&p->lock);
@@ -328,6 +337,7 @@ int fork(void)
   release(&wait_lock);
 
   acquire(&np->lock);
+  np->start_scheduling_ticks = ticks;
   np->state = RUNNABLE;
   release(&np->lock);
 
@@ -348,6 +358,13 @@ void reparent(struct proc *p)
       wakeup(initproc);
     }
   }
+}
+
+void updateMeanValues(uint64 runnable_time, uint64 running_time, uint64 sleeping_time)
+{
+  runnable_processes_mean = ((runnable_processes_mean * number_of_processes) + runnable_time) / (number_of_processes + 1);
+  running_processes_mean = ((running_processes_mean * number_of_processes) + running_time) / (number_of_processes + 1);
+  sleeping_processes_mean = ((sleeping_processes_mean * number_of_processes) + sleeping_time) / (number_of_processes + 1);
 }
 
 // Exit the current process.  Does not return.
@@ -391,6 +408,12 @@ void exit(int status)
 
   release(&wait_lock);
 
+  updateMeanValues(p->runnable_time, p->running_time, p->sleeping_time);
+  number_of_processes += 1;
+
+  program_time += p->running_time;
+
+  cpu_utilization = (program_time * 100) / (ticks - start_time);
   // Jump into the scheduler, never to return.
   sched();
   panic("zombie exit");
@@ -720,8 +743,10 @@ void wakeup(void *chan)
       acquire(&p->lock);
       if (p->state == SLEEPING && p->chan == chan)
       {
-        p->state = RUNNABLE;
+        p->sleeping_time += ticks - p->start_scheduling_ticks;
         p->start_scheduling_ticks = ticks;
+        p->last_runnable_time = ticks;
+        p->state = RUNNABLE;
       }
       release(&p->lock);
     }
@@ -858,4 +883,13 @@ int pause_system(int seconds)
   yield();
 
   return 0;
+}
+
+void print_stats(void)
+{
+  printf("Program time: %d\n", program_time);
+  printf("Running time: %d\n", running_processes_mean);
+  printf("Runnable time: %d\n", runnable_processes_mean);
+  printf("Mean sleeping time: %d\n", sleeping_processes_mean);
+  printf("CPU utilization: %d\n", cpu_utilization);
 }
