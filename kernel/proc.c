@@ -46,7 +46,7 @@ void proc_mapstacks(pagetable_t kpgtbl)
     uint64 va = KSTACK((int)(p - proc));
     kvmmap(kpgtbl, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
   }
-  start_time = ticks;
+  // start_time = ticks; // TODO: Itamar added this later
 }
 
 // initialize the proc table at boot time.
@@ -61,6 +61,7 @@ void procinit(void)
     initlock(&p->lock, "proc");
     p->kstack = KSTACK((int)(p - proc));
   }
+  start_time = ticks;
 }
 
 // Must be called with interrupts disabled,
@@ -136,7 +137,8 @@ found:
   p->runnable_time = 0;
   p->running_time = 0;
   p->sleeping_time = 0;
-
+  p->last_runnable_time = ticks;  // TODO: Itamar removed it later
+  p->start_session_ticks = ticks; // TODO: Itamar removed it later
   // Allocate a trapframe page.
   if ((p->trapframe = (struct trapframe *)kalloc()) == 0)
   {
@@ -261,7 +263,7 @@ void userinit(void)
   p->cwd = namei("/");
 
   p->last_runnable_time = ticks;
-  p->start_scheduling_ticks = ticks;
+  // p->start_scheduling_ticks = ticks; TODO: Itamar add this later
   p->state = RUNNABLE;
 
   release(&p->lock);
@@ -337,7 +339,7 @@ int fork(void)
 
   acquire(&np->lock);
   np->start_scheduling_ticks = ticks;
-  np->last_runnable_time = ticks;
+  // np->last_runnable_time = ticks; TODO: Itamar add this later
   np->state = RUNNABLE;
   release(&np->lock);
 
@@ -520,8 +522,8 @@ void roundRobin(void)
         // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
-        p->start_scheduling_ticks = ticks;
         p->runnable_time += (ticks - p->start_scheduling_ticks);
+        p->start_scheduling_ticks = ticks;
         swtch(&c->context, &p->context);
 
         // Process is done running for now.
