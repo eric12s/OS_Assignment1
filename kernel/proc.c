@@ -521,6 +521,7 @@ void roundRobin(void)
         p->state = RUNNING;
         c->proc = p;
         p->start_scheduling_ticks = ticks;
+        p->runnable_time += (ticks - p->start_session_ticks);
         swtch(&c->context, &p->context);
 
         // Process is done running for now.
@@ -576,7 +577,7 @@ void sjf(void) // TODO: how to stop clock interrupt
     {
       procToChoose->state = RUNNING;
       c->proc = procToChoose;
-      // procToChoose->runnable_time += (ticks - p->start_session_ticks);
+      procToChoose->runnable_time += (ticks - p->start_session_ticks);
       procToChoose->start_scheduling_ticks = ticks;
       swtch(&c->context, &procToChoose->context);
     }
@@ -626,7 +627,7 @@ void fcfs(void) // TODO: how to stop clock interrupt
     {
       procToChoose->state = RUNNING;
       c->proc = procToChoose;
-      // procToChoose->runnable_time += (ticks - p->start_scheduling_ticks);
+      procToChoose->runnable_time += (ticks - p->start_scheduling_ticks);
       procToChoose->start_scheduling_ticks = ticks;
       swtch(&c->context, &procToChoose->context);
     }
@@ -670,6 +671,7 @@ void yield(void)
   acquire(&p->lock);
   p->state = RUNNABLE;
   p->last_runnable_time = ticks;
+  p->running_time += (ticks - p->start_scheduling_ticks);
   p->last_ticks = ticks - p->start_scheduling_ticks;
   p->mean_ticks = ((10 - rate) * p->mean_ticks + p->last_ticks * (rate)) / 10;
   p->start_scheduling_ticks = ticks;
@@ -717,6 +719,7 @@ void sleep(void *chan, struct spinlock *lk)
   // Go to sleep.
   p->chan = chan;
   p->state = SLEEPING;
+  p->running_time += (ticks - p->start_scheduling_ticks);
   p->last_ticks = ticks - p->start_scheduling_ticks;
   p->mean_ticks = ((10 - rate) * p->mean_ticks + p->last_ticks * (rate)) / 10;
   p->start_scheduling_ticks = ticks;
