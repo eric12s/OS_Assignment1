@@ -138,7 +138,7 @@ found:
   p->running_time = 0;
   p->sleeping_time = 0;
   p->last_runnable_time = ticks;  // TODO: Itamar removed it later
-  p->start_session_ticks = ticks; // TODO: Itamar removed it later
+  p->start_scheduling_ticks = ticks; // TODO: Itamar removed it later
   // Allocate a trapframe page.
   if ((p->trapframe = (struct trapframe *)kalloc()) == 0)
   {
