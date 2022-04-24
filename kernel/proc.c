@@ -137,8 +137,8 @@ found:
   p->runnable_time = 0;
   p->running_time = 0;
   p->sleeping_time = 0;
-  p->last_runnable_time = ticks;  // TODO: Itamar removed it later
-  p->start_scheduling_ticks = ticks; // TODO: Itamar removed it later
+  p->last_runnable_time = ticks; // TODO: Itamar removed it later
+  p->start_state_ticks = ticks;  // TODO: Itamar removed it later
   // Allocate a trapframe page.
   if ((p->trapframe = (struct trapframe *)kalloc()) == 0)
   {
@@ -263,7 +263,7 @@ void userinit(void)
   p->cwd = namei("/");
 
   p->last_runnable_time = ticks;
-  // p->start_scheduling_ticks = ticks; TODO: Itamar add this later
+  p->start_state_ticks = ticks;
   p->state = RUNNABLE;
 
   release(&p->lock);
@@ -338,8 +338,8 @@ int fork(void)
   release(&wait_lock);
 
   acquire(&np->lock);
-  np->start_scheduling_ticks = ticks;
-  // np->last_runnable_time = ticks; TODO: Itamar add this later
+  np->start_state_ticks = ticks;
+  np->last_runnable_time = ticks;
   np->state = RUNNABLE;
   release(&np->lock);
 
@@ -522,8 +522,8 @@ void roundRobin(void)
         // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
-        p->runnable_time += (ticks - p->start_scheduling_ticks);
-        p->start_scheduling_ticks = ticks;
+        p->runnable_time += (ticks - p->start_state_ticks);
+        p->start_state_ticks = ticks;
         swtch(&c->context, &p->context);
 
         // Process is done running for now.
@@ -579,8 +579,8 @@ void sjf(void) // TODO: how to stop clock interrupt
     {
       procToChoose->state = RUNNING;
       c->proc = procToChoose;
-      procToChoose->runnable_time += (ticks - p->start_scheduling_ticks);
-      procToChoose->start_scheduling_ticks = ticks;
+      procToChoose->runnable_time += (ticks - p->start_state_ticks);
+      procToChoose->start_state_ticks = ticks;
       swtch(&c->context, &procToChoose->context);
     }
     // Process is done running for now.
@@ -629,8 +629,8 @@ void fcfs(void) // TODO: how to stop clock interrupt
     {
       procToChoose->state = RUNNING;
       c->proc = procToChoose;
-      procToChoose->runnable_time += (ticks - p->start_scheduling_ticks);
-      procToChoose->start_scheduling_ticks = ticks;
+      procToChoose->runnable_time += (ticks - p->start_state_ticks);
+      procToChoose->start_state_ticks = ticks;
       swtch(&c->context, &procToChoose->context);
     }
     // Process is done running for now.
@@ -673,10 +673,10 @@ void yield(void)
   acquire(&p->lock);
   p->state = RUNNABLE;
   p->last_runnable_time = ticks;
-  p->running_time += (ticks - p->start_scheduling_ticks);
-  p->last_ticks = ticks - p->start_scheduling_ticks;
+  p->running_time += (ticks - p->start_state_ticks);
+  p->last_ticks = ticks - p->start_state_ticks;
   p->mean_ticks = ((10 - rate) * p->mean_ticks + p->last_ticks * (rate)) / 10;
-  p->start_scheduling_ticks = ticks;
+  p->start_state_ticks = ticks;
   sched();
   release(&p->lock);
 }
@@ -721,10 +721,10 @@ void sleep(void *chan, struct spinlock *lk)
   // Go to sleep.
   p->chan = chan;
   p->state = SLEEPING;
-  p->running_time += (ticks - p->start_scheduling_ticks);
-  p->last_ticks = ticks - p->start_scheduling_ticks;
+  p->running_time += (ticks - p->start_state_ticks);
+  p->last_ticks = ticks - p->start_state_ticks;
   p->mean_ticks = ((10 - rate) * p->mean_ticks + p->last_ticks * (rate)) / 10;
-  p->start_scheduling_ticks = ticks;
+  p->start_state_ticks = ticks;
   sched();
 
   // Tidy up.
@@ -748,8 +748,8 @@ void wakeup(void *chan)
       acquire(&p->lock);
       if (p->state == SLEEPING && p->chan == chan)
       {
-        p->sleeping_time += ticks - p->start_scheduling_ticks;
-        p->start_scheduling_ticks = ticks;
+        p->sleeping_time += ticks - p->start_state_ticks;
+        p->start_state_ticks = ticks;
         p->last_runnable_time = ticks;
         p->state = RUNNABLE;
       }
