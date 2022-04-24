@@ -20,10 +20,10 @@ static void freeproc(struct proc *p);
 
 extern char trampoline[]; // trampoline.S
 
-int rate = 5;
+uint rate = 5;
 
-int start_time;
-int sleeping_processes_mean, running_processes_mean, runnable_processes_mean, number_of_processes, program_time, cpu_utilization = 0;
+uint start_time;
+uint sleeping_processes_mean, running_processes_mean, runnable_processes_mean, number_of_processes, program_time, cpu_utilization = 0;
 
 // helps ensure that wakeups of wait()ing
 // parents are not lost. helps obey the
@@ -412,7 +412,7 @@ void exit(int status)
 
   updateMeanValues(p->runnable_time, p->running_time, p->sleeping_time);
   number_of_processes += 1;
-
+  p->running_time += (ticks - p->start_state_ticks);
   program_time += p->running_time;
 
   cpu_utilization = (program_time * 100) / (ticks - start_time);
@@ -775,6 +775,9 @@ int kill(int pid)
       {
         // Wake process from sleep().
         p->state = RUNNABLE;
+        p->sleeping_time += (ticks - p->start_state_ticks);
+        p->start_state_ticks = ticks;
+        p->last_runnable_time = ticks;
       }
       release(&p->lock);
       return 0;
