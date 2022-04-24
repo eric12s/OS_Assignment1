@@ -119,7 +119,7 @@ struct proc
   char name[16];               // Process name (debugging)
   uint64 mean_ticks;
   uint64 start_ticks;
-  uint64 start_scheduling_ticks;
+  uint64 start_state_ticks;
   uint64 last_ticks;
   uint64 last_runnable_time;
 

@@ -892,9 +892,7 @@ int pause_system(int seconds)
 void print_stats(void)
 {
   printf("Program time: %d\n", program_time);
-  printf("Running time: %d\n", running_processes_mean);
   printf("Running time: %d\n", running_processes_mean / (number_of_processes + 1));
-  printf("Runnable time: %d\n", runnable_processes_mean);
   printf("Runnable time: %d\n", runnable_processes_mean / (number_of_processes + 1));
   printf("Mean sleeping time: %d\n", sleeping_processes_mean / (number_of_processes + 1));
   printf("CPU utilization: %d\n", cpu_utilization);
