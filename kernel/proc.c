@@ -853,7 +853,6 @@ int kill_system(void)
   for (p = proc; p < &proc[NPROC]; p++)
   {
     acquire(&p->lock);
-    // TODO: Correct pids?
     if (p->pid != 1 && p->pid != 2)
     {
       p->killed = 1;
@@ -864,7 +863,7 @@ int kill_system(void)
     }
     release(&p->lock);
   }
-  return 0; // TODO: 0 or -1
+  return 0;
 }
 
 int pause_system(int seconds)
