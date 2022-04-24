@@ -46,7 +46,6 @@ void proc_mapstacks(pagetable_t kpgtbl)
     uint64 va = KSTACK((int)(p - proc));
     kvmmap(kpgtbl, va, (uint64)pa, PGSIZE, PTE_R | PTE_W);
   }
-  // start_time = ticks; // TODO: Itamar added this later
 }
 
 // initialize the proc table at boot time.
@@ -137,8 +136,8 @@ found:
   p->runnable_time = 0;
   p->running_time = 0;
   p->sleeping_time = 0;
-  p->last_runnable_time = ticks; // TODO: Itamar removed it later
-  p->start_state_ticks = ticks;  // TODO: Itamar removed it later
+  p->last_runnable_time = ticks;
+  p->start_state_ticks = ticks;
   // Allocate a trapframe page.
   if ((p->trapframe = (struct trapframe *)kalloc()) == 0)
   {
@@ -541,7 +540,7 @@ void roundRobin(void)
   }
 }
 
-void sjf(void) // TODO: how to stop clock interrupt
+void sjf(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
@@ -570,7 +569,7 @@ void sjf(void) // TODO: how to stop clock interrupt
       release(&p->lock);
     }
 
-    if (minTicks == -99) // TODO: Check if needed
+    if (minTicks == -99)
       continue;
 
     /*runs the process with min mean ticks*/
@@ -590,7 +589,7 @@ void sjf(void) // TODO: how to stop clock interrupt
   }
 }
 
-void fcfs(void) // TODO: how to stop clock interrupt
+void fcfs(void)
 {
   printf("FCFS Policy \n");
   struct proc *p;
