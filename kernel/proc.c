@@ -184,6 +184,15 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+
+  p->running_time = 0;
+  p->runnable_time = 0;
+  p->sleeping_time = 0;
+  p->last_runnable_time = 0;
+  p->start_state_ticks = 0;
+  p->last_ticks = 0;
+  p->runnable_time = 0;
+  p->mean_ticks = 0;
 }
 
 // Create a user page table for a given process,
