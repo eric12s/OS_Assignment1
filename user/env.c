@@ -8,29 +8,33 @@
 #include "kernel/memlayout.h"
 #include "kernel/riscv.h"
 
-void env_large(){
-
-    int pid;
-    int status;
-
-    for (int i=0; i<4; i++) {
-        if ((pid = fork()) == 0) {
-            for (int i = 0; i <= 10000000; i++){
-                if (i % 10000 == 0){
-                    printf("%d", i);
-                }
-            }
-            exit(0);
+void env(int size, int interval, char* env_name) {
+    int result = 1;
+    for (int i = 0; i < 10000000; i++) {
+        if (i % 1000000 == 0) {
+        	if (fork() == 0) {
+        		printf("%s %d/%d completed.\n", env_name, i, 10000000);
+        	}
+        }
+        if (i % interval == 0) {
+            result = result * size;
         }
     }
-
-    while (wait(&status) > 0);
+    sleep(10);
 }
 
-int
-main(int argc, char *argv[])
+void env_large() {
+    env(10000000, 10000000, "env_large");
+}
+
+void env_freq() {
+    env(100, 100, "env_freq");
+}
+
+int main(int argc, char *argv[])
 {
     env_large();
-    print_stats();
+    env_freq();
+    print_stats();   
     exit(0);
 }
