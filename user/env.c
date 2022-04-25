@@ -10,9 +10,11 @@
 
 void env(int size, int interval, char* env_name) {
     int result = 1;
+    int status;
+    int pid = fork();
     for (int i = 0; i < 10000000; i++) {
         if (i % 1000000 == 0) {
-        	if (fork() == 0) {
+        	if (pid == 0) {
         		printf("%s %d/%d completed.\n", env_name, i, 10000000);
         	}
         }
@@ -20,7 +22,7 @@ void env(int size, int interval, char* env_name) {
             result = result * size;
         }
     }
-    sleep(10);
+    while (wait(&status) > 0);
 }
 
 void env_large() {
